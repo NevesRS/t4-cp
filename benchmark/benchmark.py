@@ -101,6 +101,21 @@ NOS = 4
 GEOM = ["--altura", str(ALTURA), "--largura", str(LARGURA), "--geracoes",
         str(GERACOES), "--no-print"]
 
+
+def srun_hibrido(t):
+    """srun da versao hibrida: 1 processo por no com t threads.
+
+    O --hint e essencial: com --cpus-per-task=8 o slurm escolheu os 8
+    CPUs de um socket so (os nos sao 2 sockets x 4 cores com HT e o
+    kernel numera pares=socket0, impares=socket1), que sao apenas 4
+    cores fisicos -- metade do no ociosa. Era a anomalia do 4x8.
+    nomultithread = 1 thread por core fisico (t <= 8); multithread =
+    inclui os irmaos de HT (t = 16).
+    """
+    hint = "multithread" if t > 8 else "nomultithread"
+    return ["srun", "-N", str(NOS), "-n", "4", "--hint", hint,
+            "--cpus-per-task", str(t)]
+
 # Escalabilidade fraca: cada unidade (processo ou thread) fica sempre com
 # FATIA x LARGURA celulas; o tabuleiro cresce com o numero de unidades.
 FATIA = 125  # 4000 / 32: com 32 unidades o tabuleiro e 4000x4000
@@ -136,8 +151,7 @@ def main():
         elif exp == "hibrida":
             for t in [4, 8, 16]:
                 medir("hibrida", "mpi_omp",
-                      ["srun", "-N", str(NOS), "-n", "4",
-                       "--cpus-per-task", str(t),
+                      [*srun_hibrido(t),
                        "./conway_fases_hibrido", "--threads", str(t),
                        "--estatisticas", *GEOM],
                       4, t, a.reps)
@@ -155,8 +169,7 @@ def main():
             for t in [4, 8]:
                 u = 4 * t
                 medir("fraca", "mpi_omp",
-                      ["srun", "-N", str(NOS), "-n", "4",
-                       "--cpus-per-task", str(t),
+                      [*srun_hibrido(t),
                        "./conway_fases_hibrido", "--threads", str(t),
                        "--estatisticas", *cmd_fraca(u)],
                       4, t, a.reps)  # 4 processos de t threads (u = 4t unidades)
@@ -173,8 +186,7 @@ def main():
                                   "./conway_fases_mpi", "--estatisticas",
                                   *g, *GEOM], 32, 1, 3)
             medir("init", "mpi_omp",
-                  ["srun", "-N", str(NOS), "-n", "4",
-                   "--cpus-per-task", "8",
+                  [*srun_hibrido(8),
                    "./conway_fases_hibrido", "--threads", "8",
                    "--estatisticas", *g, *GEOM], 4, 8, 3)
 
