@@ -13,15 +13,21 @@ esperado=$(srun --quiet -N 1 -n 1 ./conway_seq --altura $ALT --largura $LAR \
 falhas=0
 
 testar_mpi() {  # testar_mpi <processos> <altura>
-    local np=$1 alt=$2 saida h
+    local np=$1 alt=$2 saida h ref
+    # Referencia por altura: o esperado de $ALT ja foi calculado acima.
+    ref=$esperado
+    if [[ "$alt" != "$ALT" ]]; then
+        ref=$(srun --quiet -N 1 -n 1 ./conway_seq --altura "$alt" \
+              --largura $LAR --geracoes $GER --no-print | cut -d' ' -f2)
+    fi
     saida=$(srun --quiet -N 4 -n "$np" ./conway_fases_mpi --altura "$alt" \
             --largura $LAR --geracoes $GER --no-print 2>&1 |
             grep -E '^[0-9.]+ [0-9a-f]{16}$' | head -1)
     h=$(echo "$saida" | cut -d' ' -f2)
-    if [[ "$h" == "$esperado" ]]; then
+    if [[ "$h" == "$ref" ]]; then
         echo "OK    mpi np=$np ${alt}x${LAR}"
     else
-        echo "FALHA mpi np=$np ${alt}x${LAR}: esperado $esperado, obtido '$saida'"
+        echo "FALHA mpi np=$np ${alt}x${LAR}: esperado $ref, obtido '$saida'"
         falhas=$((falhas + 1))
     fi
 }
