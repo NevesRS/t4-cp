@@ -232,6 +232,17 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    /* O anel de troca de linhas fantasma precisa de ao menos 1 linha por
+       processo: com np > altura sobram ranks com 0 linhas e o vizinho
+       acabaria lendo memoria nao inicializada. */
+    if (proc_n > altura) {
+        if (my_rank == 0) {
+            fprintf(stderr, "Exige np <= altura (1 linha por processo).\n");
+        }
+        MPI_Finalize();
+        return 1;
+    }
+
     /* Fatia do processo: [inicio, fim) do toro, quase 1/np de linhas (o resto
        da divisao inteira sobra para os primeiros processos). */
     int inicio = (int)((long)altura * my_rank / proc_n);

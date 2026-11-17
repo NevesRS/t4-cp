@@ -8,42 +8,48 @@ set -u
 cd "$(dirname "$0")"
 
 ALT=37; LAR=41; GER=9
-esperado=$(srun -N 1 -n 1 ./conway_seq --altura $ALT --largura $LAR \
+esperado=$(srun --quiet -N 1 -n 1 ./conway_seq --altura $ALT --largura $LAR \
            --geracoes $GER --no-print | cut -d' ' -f2)
 falhas=0
 
-testar_mpi() {  # testar_mpi <processos>
-    local np=$1 saida h
-    saida=$(srun -N 4 -n "$np" ./conway_fases_mpi --altura $ALT --largura $LAR \
-            --geracoes $GER --no-print 2>&1 | head -1)
+testar_mpi() {  # testar_mpi <processos> <altura>
+    local np=$1 alt=$2 saida h
+    saida=$(srun --quiet -N 4 -n "$np" ./conway_fases_mpi --altura "$alt" \
+            --largura $LAR --geracoes $GER --no-print 2>&1 |
+            grep -E '^[0-9.]+ [0-9a-f]{16}$' | head -1)
     h=$(echo "$saida" | cut -d' ' -f2)
     if [[ "$h" == "$esperado" ]]; then
-        echo "OK    mpi np=$np ${ALT}x${LAR}"
+        echo "OK    mpi np=$np ${alt}x${LAR}"
     else
-        echo "FALHA mpi np=$np: esperado $esperado, obtido '$saida'"
+        echo "FALHA mpi np=$np ${alt}x${LAR}: esperado $esperado, obtido '$saida'"
         falhas=$((falhas + 1))
     fi
 }
 
-testar_hib() {  # testar_hib <threads>
-    local th=$1 saida h
-    saida=$(srun -N 4 -n 4 --cpus-per-task="$th" ./conway_fases_hibrido \
-            --threads "$th" --altura $ALT --largura $LAR --geracoes $GER \
-            --no-print 2>&1 | head -1)
+testar_hib() {  # testar_hib <threads> <altura>
+    local th=$1 alt=$2 saida h
+    saida=$(srun --quiet -N 4 -n 4 --cpus-per-task="$th" \
+            ./conway_fases_hibrido --threads "$th" --altura "$alt" \
+            --largura $LAR --geracoes $GER --no-print 2>&1 |
+            grep -E '^[0-9.]+ [0-9a-f]{16}$' | head -1)
     h=$(echo "$saida" | cut -d' ' -f2)
     if [[ "$h" == "$esperado" ]]; then
-        echo "OK    hibrido thr=$th ${ALT}x${LAR}"
+        echo "OK    hibrido thr=$th ${alt}x${LAR}"
     else
-        echo "FALHA hibrido thr=$th: esperado $esperado, obtido '$saida'"
+        echo "FALHA hibrido thr=$th ${alt}x${LAR}: esperado $esperado, obtido '$saida'"
         falhas=$((falhas + 1))
     fi
 }
 
-for np in 1 2 3 4 5 7 8 16 31 32 37 64; do
-    testar_mpi "$np"
+# O anel de troca de linhas fantasma exige np <= altura: com mais processos
+# que linhas, sobram ranks com 0 linhas e o vizinho manda memoria nao
+# inicializada. Por isso os testes com 64 processos usam altura 100.
+for np in 1 2 3 4 5 7 8 16 31 32 37; do
+    testar_mpi "$np" $ALT
 done
+testar_mpi 64 100
 for th in 1 2 4 8 16; do
-    testar_hib "$th"
+    testar_hib "$th" $ALT
 done
 
 # Tamanho real do trabalho (so tempo e checksum, sem comparacao)
