@@ -1,0 +1,171 @@
+\documentclass[10pt,twocolumn]{article}
+
+\usepackage[a4paper,margin=1cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{titlesec}
+
+% Titulos menores (orientacao recebida em aula)
+\titleformat{\section}{\small\bfseries}{\thesection.}{0.4em}{}
+\titlespacing*{\section}{0pt}{3pt}{1pt}
+\setlength{\parskip}{0pt}
+\setlength{\columnsep}{8pt}
+\linespread{0.92}\selectfont
+
+\lstset{
+    basicstyle=\ttfamily\scriptsize,
+    breaklines=true,
+    numbers=left,
+    numberstyle=\tiny,
+    frame=single,
+    language=C,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray}
+}
+
+\input{tabelas.tex}
+
+% Procura os fontes na propria pasta do main.tex, em src/ ou em ../src/.
+\newcommand{\includecodigo}[1]{%
+  \IfFileExists{#1}{%
+    \lstinputlisting[language=C]{#1}%
+  }{%
+    \IfFileExists{src/#1}{%
+      \lstinputlisting[language=C]{src/#1}%
+    }{%
+      \IfFileExists{../src/#1}{%
+        \lstinputlisting[language=C]{../src/#1}%
+      }{%
+        \textbf{Arquivo \texttt{#1} não encontrado.}%
+      }%
+    }%
+  }%
+}
+
+\title{\vspace{-1.5cm}\large Jogo da Vida de Conway com MPI no modelo fases
+paralelas: versão pura e híbrida MPI/OpenMP\vspace{-0.3cm}}
+\author{
+    \normalsize
+    Bruno Neves \quad
+    Guilherme Hoffmann \quad
+    João Sbardelotto \\
+    \small Computação Paralela --- Turma 320 --- Prof. Cesar A. F. De Rose ---
+    PUCRS --- Grupo 12
+}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.0cm}
+
+\section{Introdução}
+\label{sec:intro}
+
+Este trabalho implementa o \emph{Jogo da Vida de Conway} (problema dos
+trabalhos anteriores) no modelo \emph{fases paralelas} com MPI: cada processo
+fica com $1/np$ do tabuleiro e um ciclo de geração avança por fases ---
+processamento local, verificação distribuída coletiva e troca com os
+vizinhos --- executadas simultaneamente por todos os processos. São
+apresentadas uma versão \textbf{MPI puro} e uma \textbf{híbrida
+MPI/OpenMP}, executadas na atlântica com 4 nós (32 processos físicos, 64 com
+HT; na híbrida, 4 processos --- um por nó --- com 4, 8 e 16 threads).
+% TODO(Grupo): ajustar este paragrafo apos os resultados.
+
+\section{Modelagem no modelo fases paralelas}
+\label{sec:modelo}
+
+O tabuleiro é um toro de \emph{altura} $\times$ \emph{largura} células, usado
+também no T1/T2 (1500$\times$1500, 75 gerações, densidade inicial 20\%,
+\texttt{srand(42)}). A partição é por \textbf{blocos de linhas}: o processo
+$r$ fica com as linhas $[r\cdot h/np,\,(r{+}1)\cdot h/np)$; cada processo
+\textbf{gera internamente} a sua fatia percorrendo a mesma sequência de
+\texttt{rand()} da versão sequencial e gravando só as suas linhas ---
+tabuleiro inicial idêntico à linha de base, sem comunicação.
+
+Cada geração é um ciclo de fases:
+\begin{itemize}\setlength{\itemsep}{0pt}
+  \item \textbf{Processamento local (Fase 1):} cada processo calcula a próxima
+        geração das suas linhas, usando \emph{ghost rows}: a primeira e a
+        última linha de cada fatia têm cópias das linhas de borda dos
+        vizinhos, trocadas com \texttt{MPI\_Sendrecv} (duas chamadas, uma para
+        cada sentido do toro vertical). Com o halo, o núcleo por célula é o
+        mesmo da versão sequencial, só sem os módulos verticais.
+  \item \textbf{Verificação distribuída (Fase 2, coletiva):} cada processo
+        conta quantas células suas mudaram de estado e um
+        \texttt{MPI\_Allreduce} soma o total. Se ninguém mudou, o tabuleiro
+        estabilizou e o trabalho está pronto (a geração seguinte seria
+        idêntica); o limite de gerações do T1/T2 continua valendo.
+  \item \textbf{Troca com vizinhos (Fase 3):} nova troca de \emph{ghost rows}
+        em busca de convergência --- é a Fase 1 do ciclo seguinte.
+\end{itemize}
+
+Na versão \textbf{híbrida}, a Fase 1 de cada processo é paralelizada com
+OpenMP: as linhas da fatia são repartidas estaticamente entre as threads do
+nó (custo por linha uniforme). A comunicação MPI fica fora da região
+paralela (granularidade grossa, sem MPI aninhado): \emph{MPI divide os nós,
+OpenMP divide os núcleos}.
+
+\section{Metodologia}
+\label{sec:metodo}
+
+Compilação com \texttt{-O2}; medições com \texttt{MPI\_Wtime} (média de 5
+repetições), em 4 nós exclusivos da atlântica (8 núcleos físicos por nó, 16
+com HT):
+\begin{itemize}\setlength{\itemsep}{0pt}
+  \item sequencial (\texttt{-N 1 -n 1}) como linha de base;
+  \item \textbf{MPI puro}: $np = 4, 8, 16, 32$ (físico) e $64$ (HT);
+  \item \textbf{híbrida}: 4 processos (1 por nó) $\times$ 4, 8 e 16 threads
+        por nó (16 com HT) --- pontos comparáveis a $np=16$, $32$ e $64$ do
+        MPI puro.
+\end{itemize}
+Correção conferida por checksum FNV-1a do tabuleiro final, igual ao da versão
+sequencial para todas as configurações (inclusive alturas não divisíveis e
+mais processos que linhas).
+
+\section{Resultados}
+\label{sec:resultados}
+
+% TODO(Grupo): preencher tabelas.tex com os tempos medidos e descomentar.
+% \TabelaForte{}
+% \TabelaHibrida{}
+% Ver ../resultados/ e scripts de analise em ../benchmark/.
+
+\section{Análise}
+\label{sec:analise}
+
+% TODO(Grupo): preencher apos as medicoes. Sugestao de roteiro:
+% - speedup/eficiencia forte do MPI puro (16 -> 32 -> 64) e da hibrida;
+%   comparacao MPI puro 32 vs hibrida 4x8 (mesmos nucleos fisicos) e
+%   64 vs 4x16 (mesmos nucleos logicos/HT).
+% - peso das fases: calculo vs troca (Sendrecv) vs coletiva (Allreduce);
+%   o halo de 1 linha por lado custa 2 mensagens de largura bytes por
+%   geracao por processo.
+% - balanceamento: fatias quase iguais (resto da divisao em ate np-1 linhas);
+%   tempos por rank em processos-<job>.csv.
+% - efeito do HT (64 vs 32) e do Allreduce por geracao.
+
+\section{Ferramentas de IA}
+\label{sec:ia}
+
+% TODO(Grupo): descrever a ferramenta usada e como (instrumentação do código
+% e confecção do relatório).
+
+\onecolumn
+\appendix
+
+\section{Versão sequencial (conwaySequencial.c)}
+\includecodigo{conwaySequencial.c}
+
+\section{Versão MPI puro (conway\_fases\_mpi.c)}
+\includecodigo{conway_fases_mpi.c}
+
+\section{Versão híbrida MPI/OpenMP (conway\_fases\_mpi\_omp.c)}
+\includecodigo{conway_fases_mpi_omp.c}
+
+\end{document}

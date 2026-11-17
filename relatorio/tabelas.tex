@@ -1,0 +1,32 @@
+% Tabelas do relatorio T4 -- preencher apos as medicoes na atlantica.
+% Cada macro recebe o \begin{table}...\end{table} ja posicionado pelo chamador
+% (padrao do T3: definidas aqui, usadas em main.tex).
+
+% TODO(Grupo): preencher com os dados de ../resultados/brutos-<job>.csv
+% (media das repeticoes) e ../resultados/processos-<job>.csv (fases).
+\newcommand{\TabelaForte}[1]{%
+  \begin{tabular}{lrrrr}
+    \toprule
+    $np$ & Tempo (s) & Speedup & Eficiência & \\
+    \midrule
+    1 (seq)  & -- & 1.00 & 1.00 & \\
+    4        & -- & --   & --   & \\
+    8        & -- & --   & --   & \\
+    16       & -- & --   & --   & \\
+    32       & -- & --   & --   & \\
+    64 (HT)  & -- & --   & --   & \\
+    \bottomrule
+  \end{tabular}%
+}
+
+\newcommand{\TabelaHibrida}[1]{%
+  \begin{tabular}{lrrrr}
+    \toprule
+    Configuração & Tempo (s) & Speedup & Eficiência & \\
+    \midrule
+    4$\times$4 thr  & -- & -- & -- & \\
+    4$\times$8 thr  & -- & -- & -- & \\
+    4$\times$16 thr & -- & -- & -- & \\
+    \bottomrule
+  \end{tabular}%
+}
