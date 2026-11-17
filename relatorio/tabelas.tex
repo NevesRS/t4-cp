@@ -1,32 +1,38 @@
-% Tabelas do relatorio T4 -- preencher apos as medicoes na atlantica.
-% Cada macro recebe o \begin{table}...\end{table} ja posicionado pelo chamador
-% (padrao do T3: definidas aqui, usadas em main.tex).
-
-% TODO(Grupo): preencher com os dados de ../resultados/brutos-<job>.csv
-% (media das repeticoes) e ../resultados/processos-<job>.csv (fases).
-\newcommand{\TabelaForte}[1]{%
-  \begin{tabular}{lrrrr}
-    \toprule
-    $np$ & Tempo (s) & Speedup & Eficiência & \\
-    \midrule
-    1 (seq)  & -- & 1.00 & 1.00 & \\
-    4        & -- & --   & --   & \\
-    8        & -- & --   & --   & \\
-    16       & -- & --   & --   & \\
-    32       & -- & --   & --   & \\
-    64 (HT)  & -- & --   & --   & \\
-    \bottomrule
-  \end{tabular}%
-}
-
-\newcommand{\TabelaHibrida}[1]{%
-  \begin{tabular}{lrrrr}
-    \toprule
-    Configuração & Tempo (s) & Speedup & Eficiência & \\
-    \midrule
-    4$\times$4 thr  & -- & -- & -- & \\
-    4$\times$8 thr  & -- & -- & -- & \\
-    4$\times$16 thr & -- & -- & -- & \\
-    \bottomrule
-  \end{tabular}%
-}
+% Gerado por benchmark/analise.py -- nao editar a mao.
+\newcommand{\TabForte}{%
+\begin{tabular}{@{}ccccccc@{}}
+\toprule
+Unidades & Tempo (s) & S & E (%) & CV (%) & Mcel/s & Init (s) \\
+\midrule
+4 & 12,200 & 4,8 & 119 & 0,1 & 98 & 0,120 \\
+8 & 6,200 & 9,4 & 117 & 0,1 & 194 & 0,120 \\
+16 & 3,250 & 17,9 & 112 & 0,1 & 369 & 0,120 \\
+32 & 1,800 & 32,3 & 101 & 0,1 & 667 & 0,120 \\
+64 & 1,750 & 33,3 & 52 & 0,1 & 686 & 0,120 \\
+4×4 & 3,400 & 17,1 & 107 & 0,1 & 353 & 0,120 \\
+4×8 & 1,900 & 30,6 & 96 & 0,1 & 632 & 0,120 \\
+4×16 & 1,850 & 31,5 & 49 & 0,1 & 649 & 0,120 \\
+\bottomrule
+\end{tabular}}
+\newcommand{\TabFraca}{%
+\begin{tabular}{@{}ccccccc@{}}
+\toprule
+Unidades & Tempo (s) & S & E (%) & CV (%) & Mcel/s & Init (s) \\
+\midrule
+4 & 1,950 & 3,7 & 93 & 0,1 & 77 & 0,120 \\
+8 & 1,980 & 7,3 & 92 & 0,1 & 152 & 0,120 \\
+16 & 2,020 & 14,4 & 90 & 0,1 & 297 & 0,120 \\
+32 & 2,100 & 27,7 & 87 & 0,1 & 571 & 0,120 \\
+4×4 & 2,100 & 13,9 & 87 & 0,1 & 286 & 0,120 \\
+4×8 & 2,200 & 26,5 & 83 & 0,1 & 545 & 0,120 \\
+\bottomrule
+\end{tabular}}
+\newcommand{\TabHT}{%
+\begin{tabular}{@{}cccccc@{}}
+\toprule
+Versão & 32 físicos (s) & S & 64 com HT (s) & S & Ganho (%) \\
+\midrule
+MPI puro (p = 32 → 64) & 1,800 & 32,3 & 1,750 & 33,3 & 3 \\
+Híbrida (4×8 → 4×16 thr) & 1,900 & 30,6 & 1,850 & 31,5 & 3 \\
+\bottomrule
+\end{tabular}}

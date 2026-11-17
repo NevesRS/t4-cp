@@ -41,7 +41,7 @@ PROCESSOS = os.path.join(RESULTADOS, f"processos-{JOB}.csv")
 CAMPOS_BRUTOS = ["experimento", "versao", "processos", "threads", "nos",
                  "altura", "largura", "geracoes", "repeticao", "tempo_s", "ok"]
 CAMPOS_PROC = ["experimento", "versao", "processos", "threads", "rank",
-               "calc_s", "troca_s", "coletiva_s"]
+               "calc_s", "troca_s", "coletiva_s", "init_s"]
 
 
 def anexar(caminho, campos, linhas):
@@ -62,11 +62,15 @@ def executar(cmd):
     tempo, ok = linhas[0].split()[:2]
     procs = []
     for l in linhas[1:]:
-        # "# rank R calc X troca Y coletiva Z"
+        # "# rank R calc X troca Y coletiva Z [init W]" -- o init so existe
+        # nas versoes novas do binario; linhas antigas ficam sem a coluna.
         p = l.split()
         if p[0] == "#" and p[1] == "rank":
-            procs.append(dict(rank=p[2], calc_s=p[4], troca_s=p[6],
-                              coletiva_s=p[8]))
+            proc = dict(rank=p[2], calc_s=p[4], troca_s=p[6],
+                        coletiva_s=p[8])
+            if len(p) > 10:
+                proc["init_s"] = p[10]
+            procs.append(proc)
     return float(tempo), ok, procs
 
 
@@ -106,7 +110,7 @@ def cmd_fraca(unidades):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("experimentos", nargs="+",
-                    choices=["seq", "forte", "hibrida", "fraca"])
+                    choices=["seq", "forte", "hibrida", "fraca", "init"])
     ap.add_argument("--reps", type=int, default=5)
     a = ap.parse_args()
     os.makedirs(RESULTADOS, exist_ok=True)
@@ -151,6 +155,23 @@ def main():
                        "./conway_fases_hibrido", "--threads", str(t),
                        "--estatisticas", *cmd_fraca(u)],
                       u, t, a.reps)
+        elif exp == "init":
+            # Custo de gerar_fatia (O(tabuleiro), com ~0 geracoes roda so
+            # o init): constante em np? O valor vem do campo init_s da
+            # linha "# rank ..." (processos-<job>.csv). No seq a geracao
+            # fica fora do cronometro, entao nao ha linha de seq aqui.
+            g = ["--geracoes", "0", "--no-print"]
+            medir("init", "mpi", ["srun", "-N", str(NOS), "-n", "1",
+                                  "./conway_fases_mpi", "--estatisticas",
+                                  *g, *GEOM], 1, 1, 3)
+            medir("init", "mpi", ["srun", "-N", str(NOS), "-n", "32",
+                                  "./conway_fases_mpi", "--estatisticas",
+                                  *g, *GEOM], 32, 1, 3)
+            medir("init", "mpi_omp",
+                  ["srun", "-N", str(NOS), "-n", "4",
+                   "--cpus-per-task", "8",
+                   "./conway_fases_hibrido", "--threads", "8",
+                   "--estatisticas", *g, *GEOM], 4, 8, 3)
 
     print(f"== fim em {(time.time() - inicio) / 60:.1f} min", flush=True)
 

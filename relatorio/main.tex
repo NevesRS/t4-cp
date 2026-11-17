@@ -131,7 +131,8 @@ mais processos que linhas).
 \section{Resultados}
 \label{sec:resultados}
 
-% TODO(Grupo): preencher tabelas.tex com os tempos medidos e descomentar.
+% TODO(Grupo): tabelas.tex ja e gerado por benchmark/analise.py (TabForte,
+% TabFraca, TabHT); descomentar quando os CSVs reais estiverem em ../resultados/.
 % \TabelaForte{}
 % \TabelaHibrida{}
 % Ver ../resultados/ e scripts de analise em ../benchmark/.
@@ -145,10 +146,20 @@ mais processos que linhas).
 %   64 vs 4x16 (mesmos nucleos logicos/HT).
 % - peso das fases: calculo vs troca (Sendrecv) vs coletiva (Allreduce);
 %   o halo de 1 linha por lado custa 2 mensagens de largura bytes por
-%   geracao por processo.
-% - balanceamento: fatias quase iguais (resto da divisao em ate np-1 linhas);
-%   tempos por rank em processos-<job>.csv.
-% - efeito do HT (64 vs 32) e do Allreduce por geracao.
+%   geracao por processo. Ver \TabHT (ganho do HT) e a figura de fases:
+%   \begin{figure}[h]
+%     \centering
+%   \includegraphics[width=\linewidth]{fig_fases.pdf}
+%   \end{figure}
+%   (analise.py grava fig_fases.pdf aqui em relatorio/ junto com as
+%   demais figuras).
+% - balanceamento: CV (%) do calc entre ranks (coluna das tabelas);
+%   fatias quase iguais (resto da divisao em ate np-1 linhas).
+% - init: custo O(tabuleiro) de gerar_fatia por processo (coluna Init),
+%   constante em np; relevante no tabuleiro 4000x4000.
+% - throughput: coluna Mcel/s (milhoes de celulas/geracao por segundo).
+% - anomalia da hibrida 4x8 (se persistir): investigar com
+%   srun --cpu-bind=verbose e OMP_DISPLAY_ENV=verbose.
 
 \section{Ferramentas de IA}
 \label{sec:ia}

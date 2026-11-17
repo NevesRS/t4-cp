@@ -248,7 +248,12 @@ int main(int argc, char *argv[]) {
     unsigned char *proximo = alocar_tabuleiro(k + 2);
 
     srand(42);
-    gerar_fatia(atual, inicio, fim); /* fora da regiao cronometrada */
+    /* Fora da regiao cronometrada, mas medido a parte: cada processo percorre
+       o tabuleiro INTEIRO (O(altura x largura) chamadas de rand) para gerar
+       a propria fatia -- custo de inicializacao constante, independente de np. */
+    double tempo_init = MPI_Wtime();
+    gerar_fatia(atual, inicio, fim);
+    tempo_init = MPI_Wtime() - tempo_init;
 
     MPI_Barrier(MPI_COMM_WORLD); /* todos prontos: comeca a medicao */
     double starttime = MPI_Wtime();
@@ -291,16 +296,17 @@ int main(int argc, char *argv[]) {
 
     /* Fora da medicao: tempo de cada fase de cada processo, para analisar o
        balanceamento de carga. O rank 0 recebe tudo e imprime em ordem. */
-    double meus_tempos[3] = {tempo_calculo, tempo_troca, tempo_coletiva};
+    double meus_tempos[4] = {tempo_calculo, tempo_troca, tempo_coletiva,
+                             tempo_init};
     double *tempos = NULL;
     if (my_rank == 0) {
-        tempos = malloc(3 * proc_n * sizeof(double));
+        tempos = malloc(4 * proc_n * sizeof(double));
         if (tempos == NULL) {
             fprintf(stderr, "Erro ao alocar as estatisticas.\n");
             MPI_Abort(MPI_COMM_WORLD, 1);
         }
     }
-    MPI_Gather(meus_tempos, 3, MPI_DOUBLE, tempos, 3, MPI_DOUBLE, 0,
+    MPI_Gather(meus_tempos, 4, MPI_DOUBLE, tempos, 4, MPI_DOUBLE, 0,
                MPI_COMM_WORLD);
 
     unsigned long long hash = checksum_global(atual, k, my_rank, proc_n);
@@ -323,8 +329,10 @@ int main(int argc, char *argv[]) {
         }
         if (estatisticas) {
             for (int r = 0; r < proc_n; r++) {
-                printf("# rank %d calc %.6f troca %.6f coletiva %.6f\n", r,
-                       tempos[3 * r], tempos[3 * r + 1], tempos[3 * r + 2]);
+                printf("# rank %d calc %.6f troca %.6f coletiva %.6f "
+                       "init %.6f\n", r,
+                       tempos[4 * r], tempos[4 * r + 1], tempos[4 * r + 2],
+                       tempos[4 * r + 3]);
             }
         }
         free(tempos);
