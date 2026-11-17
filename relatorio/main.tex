@@ -73,9 +73,8 @@ fica com $1/np$ do tabuleiro e um ciclo de geração avança por fases ---
 processamento local, verificação distribuída coletiva e troca com os
 vizinhos --- executadas simultaneamente por todos os processos. São
 apresentadas uma versão \textbf{MPI puro} e uma \textbf{híbrida
-MPI/OpenMP}, executadas na atlântica com 4 nós (32 processos físicos, 64 com
+MPI/OpenMP}, executadas na atlântica com 4 nós (32 núcleos físicos, 64 com
 HT; na híbrida, 4 processos --- um por nó --- com 4, 8 e 16 threads).
-% TODO(Grupo): ajustar este paragrafo apos os resultados.
 
 \section{Modelagem no modelo fases paralelas}
 \label{sec:modelo}
@@ -115,8 +114,8 @@ OpenMP divide os núcleos}.
 \label{sec:metodo}
 
 Compilação com \texttt{-O2}; medições com \texttt{MPI\_Wtime} (média de 5
-repetições), em 4 nós exclusivos da atlântica (8 núcleos físicos por nó, 16
-com HT):
+repetições), em 4 nós exclusivos da atlântica (8 núcleos físicos por nó,
+2 sockets de 4, 16 com HT):
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item sequencial (\texttt{-N 1 -n 1}) como linha de base;
   \item \textbf{MPI puro}: $np = 4, 8, 16, 32$ (físico) e $64$ (HT);
@@ -124,48 +123,158 @@ com HT):
         por nó (16 com HT) --- pontos comparáveis a $np=16$, $32$ e $64$ do
         MPI puro.
 \end{itemize}
-Correção conferida por checksum FNV-1a do tabuleiro final, igual ao da versão
-sequencial para todas as configurações (inclusive alturas não divisíveis e
-mais processos que linhas).
+Na híbrida, \texttt{srun --hint=nomultithread} ($t{\le}8$) ou
+\texttt{multithread} ($t{=}16$) é essencial: sem ele, o
+\texttt{--cpus-per-task=8} recebia só os 8 CPUs de um socket --- 4 dos 8
+núcleos físicos (detalhe na Seção~\ref{sec:analise}). Correção conferida por
+checksum FNV-1a do tabuleiro final, igual ao da versão sequencial para todas
+as configurações (inclusive alturas não divisíveis e mais processos que
+linhas). A instrumentação cronometra, por rank, as fases de cálculo, troca de
+halo e coletiva, e também a geração da fatia inicial ($O$(tabuleiro), fora do
+cronômetro principal).
 
 \section{Resultados}
 \label{sec:resultados}
 
-% TODO(Grupo): tabelas.tex ja e gerado por benchmark/analise.py (TabForte,
-% TabFraca, TabHT); descomentar quando os CSVs reais estiverem em ../resultados/.
-% \TabelaForte{}
-% \TabelaHibrida{}
-% Ver ../resultados/ e scripts de analise em ../benchmark/.
+O sequencial leva \emph{58,3~s} (20,6 Mcel/s). As Tabelas~\ref{tab:forte} e
+\ref{tab:fraca} e as Figuras~\ref{fig:forte}--\ref{fig:eficiencia} (página
+seguinte) mostram escalabilidade forte, fraca e eficiência do MPI puro e da
+híbrida; a Tabela~\ref{tab:ht} isola o efeito do HT. Destaques: $S = 39{,}3$
+com 32 processos no MPI puro ($E = 123\%$, superlinear) e $S = 37{,}7$ na
+híbrida $4{\times}8$; a comunicação é irrelevante em todas as configurações;
+o tempo de inicialização chega a 45\% do total em $np=64$.
 
 \section{Análise}
 \label{sec:analise}
 
-% TODO(Grupo): preencher apos as medicoes. Sugestao de roteiro:
-% - speedup/eficiencia forte do MPI puro (16 -> 32 -> 64) e da hibrida;
-%   comparacao MPI puro 32 vs hibrida 4x8 (mesmos nucleos fisicos) e
-%   64 vs 4x16 (mesmos nucleos logicos/HT).
-% - peso das fases: calculo vs troca (Sendrecv) vs coletiva (Allreduce);
-%   o halo de 1 linha por lado custa 2 mensagens de largura bytes por
-%   geracao por processo. Ver \TabHT (ganho do HT) e a figura de fases:
-%   \begin{figure}[h]
-%     \centering
-%   \includegraphics[width=\linewidth]{fig_fases.pdf}
-%   \end{figure}
-%   (analise.py grava fig_fases.pdf aqui em relatorio/ junto com as
-%   demais figuras).
-% - balanceamento: CV (%) do calc entre ranks (coluna das tabelas);
-%   fatias quase iguais (resto da divisao em ate np-1 linhas).
-% - init: custo O(tabuleiro) de gerar_fatia por processo (coluna Init),
-%   constante em np; relevante no tabuleiro 4000x4000.
-% - throughput: coluna Mcel/s (milhoes de celulas/geracao por segundo).
-% - anomalia da hibrida 4x8 (se persistir): investigar com
-%   srun --cpu-bind=verbose e OMP_DISPLAY_ENV=verbose.
+\textbf{Superlinearidade por cache.} O speed-up supera o linear ($E$ de
+123--133\% até 32 unidades) nas duas escalas: o tabuleiro de 4000$^2$
+(32~MB nos dois tabuleiros) não cabe na cache do nó quando o sequencial
+percorre tudo em um núcleo, mas dividido em fatias de 0,5~MB por rank as
+fatias ficam residentes. A coluna Mcel/s evidencia: 20,6 no sequencial
+contra 809 com $np=32$ (39$\times$).
+
+\textbf{A comunicação não é gargalo.} A Figura~\ref{fig:fases} decompõe o
+tempo por rank: em $np=32$, cada rank gasta 1,43~s de cálculo contra
+0,0105~s de troca de halo e 0,063~s de Allreduce (75 gerações) --- menos de
+5\% do total. O CV do cálculo entre ranks fica $\le 1{,}2\%$: as fatias
+(blocos de linhas com resto distribuído) balanceiam bem.
+
+\textbf{HT agrega pouco.} Duplicar as unidades de 32 para 64 (Tabela
+\ref{tab:ht}) adiciona apenas 1,5\% no MPI puro e 2,7\% na híbrida: o
+cálculo é limitado por memória, e os irmãos de HT dividem os mesmos
+recursos do núcleo físico.
+
+\textbf{O custo de inicializar.} Cada processo gera sua fatia percorrendo
+\emph{todo} o tabuleiro de \texttt{rand()} --- $O$(tabuleiro)
+independente de $np$ (~0,41~s). Com o tempo total caindo para 1,5~s, o
+init vira 27--45\% da execução em $np \ge 32$ (e cresce com a contenção de
+cache: 0,65~s em $np=64$).
+
+\textbf{Diagnóstico e correção de um desvio de medição.} A primeira rodada
+da híbrida mostrava $4{\times}8$ tão lenta quanto $4{\times}4$ ($S=20$
+ambas; Figura~\ref{fig:anomalia}, barras ``antes''). Com
+\texttt{srun --cpu-bind=verbose} e \texttt{OMP\_DISPLAY\_ENV=verbose}
+identificamos a causa: a topologia dos nós é 2 sockets $\times$ 4 núcleos
+com HT e o kernel numera os CPUs com os pares em um socket e os ímpares no
+outro; o \texttt{--cpus-per-task=8} recebia exatamente os 8 CPUs de um
+único socket --- 4 núcleos físicos, com o socket restante ocioso (calc
+$= W/16$ em vez de $W/32$, com $W \approx 45{,}7$ core$\cdot$s). A correção
+foi \texttt{--hint=nomultithread}, que entrega um CPU por núcleo físico nos
+dois sockets: o calc do $4{\times}8$ caiu de 2,84 para 1,46~s e o speed-up
+saltou de 20,1 para 37,7, empatando com o MPI puro de mesmo tamanho
+($4{\times}16$ e $4{\times}4$ não mudaram, como esperado).
 
 \section{Ferramentas de IA}
 \label{sec:ia}
 
-% TODO(Grupo): descrever a ferramenta usada e como (instrumentação do código
-% e confecção do relatório).
+% TODO(Grupo): ajustar a participacao real de cada integrante.
+O código, o suíte de benchmark e a análise foram desenvolvidos com apoio de
+assistente de IA (Claude/opencode): instrumentação das fases, scripts
+\texttt{benchmark.py}/\texttt{analise.py}, diagnóstico do binding
+(interpretação dos logs \texttt{--cpu-bind=verbose}) e confecção deste
+relatório. Todas as decisões, revisões e validações no cluster foram do
+grupo.
+
+% =====================================================================
+% PAGINA 2 --- TABELAS E GRAFICOS (coluna simples)
+% =====================================================================
+\clearpage
+\onecolumn
+
+\section*{Tabelas e gráficos}
+\vspace{-4pt}
+\noindent\small 4 nós exclusivos da atlântica (2 sockets $\times$ 4 núcleos
+por nó, 16 CPUs lógicas, HT). Tabuleiro 4000$\times$4000, 75 gerações,
+densidade 20\%. $T_s = 58{,}3$~s (sequencial); na fraca, tabuleiro de
+$125$ linhas por unidade e $T_s$ medido no tabuleiro grande de cada ponto.
+Unidade = 1 processo MPI (pura) ou 1 thread OpenMP (híbrida, $4{\times}t$);
+``64'' usa HT. Mcel/s = milhões de célula$\cdot$gerações por segundo;
+CV = coeficiente de variação do cálculo entre ranks; Init = maior tempo de
+geração da fatia entre os ranks.
+
+\begin{table}[h]
+\centering
+\small\textbf{Escalabilidade forte (tabuleiro fixo)}\\[2pt]
+\scriptsize\TabForte
+\caption{MPI puro e híbrida, tabuleiro 4000$\times$4000.}
+\label{tab:forte}
+\end{table}
+
+\begin{table}[h]
+\centering
+\small\textbf{Escalabilidade fraca (tabuleiro proporcional, sem HT)}\\[2pt]
+\scriptsize\TabFraca
+\caption{Tabuleiro de 125 linhas por unidade.}
+\label{tab:fraca}
+\end{table}
+
+\begin{table}[h]
+\centering
+\small\textbf{Efeito do hyperthreading (forte)}\\[2pt]
+\scriptsize\TabHT
+\caption{32 unidades físicas $\times$ 64 com HT.}
+\label{tab:ht}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.72\linewidth]{fig_forte.pdf}
+\caption{Escalabilidade forte: MPI puro (azul) e híbrida (laranja); ideal
+$S=p$ tracejado, HT sombreado.}
+\label{fig:forte}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.72\linewidth]{fig_fraca.pdf}
+\caption{Escalabilidade fraca (sem HT).}
+\label{fig:fraca}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\linewidth]{fig_eficiencia.pdf}
+\caption{Eficiência nas escalas forte e fraca.}
+\label{fig:eficiencia}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\linewidth]{fig_fases.pdf}
+\caption{Tempo por fase e por rank (1ª repetição): o cálculo domina e a
+comunicação (halo + Allreduce) é marginal.}
+\label{fig:fases}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.72\linewidth]{fig_anomalia.pdf}
+\caption{Cálculo por rank da híbrida antes e depois da correção de binding:
+sem o \texttt{--hint}, o \texttt{--cpus-per-task=8} recebia só os CPUs de um
+socket (4 dos 8 núcleos físicos).}
+\label{fig:anomalia}
+\end{figure}
 
 \onecolumn
 \appendix

@@ -1,0 +1,38 @@
+% Gerado por benchmark/analise.py -- nao editar a mao.
+\newcommand{\TabForte}{%
+\begin{tabular}{@{}ccccccc@{}}
+\toprule
+Unidades & Tempo (s) & S & E (%) & CV (%) & Mcel/s & Init (s) \\
+\midrule
+4 & 10,938 & 5,3 & 133 & 0,0 & 110 & 0,407 \\
+8 & 5,516 & 10,6 & 132 & 0,1 & 218 & 0,407 \\
+16 & 2,874 & 20,3 & 127 & 0,9 & 418 & 0,421 \\
+32 & 1,484 & 39,3 & 123 & 0,1 & 809 & 0,495 \\
+64 & 1,461 & 39,9 & 62 & 1,0 & 821 & 0,654 \\
+4×4 & 2,875 & 20,3 & 127 & 1,1 & 417 & 0,405 \\
+4×8 & 2,905 & 20,1 & 63 & 0,1 & 413 & 0,408 \\
+4×16 & 1,485 & 39,2 & 61 & 0,3 & 808 & 0,406 \\
+\bottomrule
+\end{tabular}}
+\newcommand{\TabFraca}{%
+\begin{tabular}{@{}ccccccc@{}}
+\toprule
+Unidades & Tempo (s) & S & E (%) & CV (%) & Mcel/s & Init (s) \\
+\midrule
+4 & 1,419 & 5,1 & 128 & 0,1 & 106 & 0,053 \\
+8 & 1,425 & 10,2 & 128 & 0,2 & 210 & 0,106 \\
+16 & 1,464 & 19,9 & 124 & 0,4 & 410 & 0,219 \\
+32 & 1,485 & 39,3 & 123 & 0,1 & 808 & 0,422 \\
+4×4 & 1,462 & 19,9 & 125 & 1,1 & 410 & 0,203 \\
+4×8 & 2,905 & 20,1 & 63 & 0,0 & 413 & 0,409 \\
+\bottomrule
+\end{tabular}}
+\newcommand{\TabHT}{%
+\begin{tabular}{@{}cccccc@{}}
+\toprule
+Versão & 32 físicos (s) & S & 64 com HT (s) & S & Ganho (%) \\
+\midrule
+MPI puro (p = 32 → 64) & 1,484 & 39,3 & 1,461 & 39,9 & 2 \\
+Híbrida (4×8 → 4×16 thr) & 2,905 & 20,1 & 1,485 & 39,2 & 96 \\
+\bottomrule
+\end{tabular}}

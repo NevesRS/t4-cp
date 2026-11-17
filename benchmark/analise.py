@@ -302,6 +302,59 @@ def ranks_de(procs, chave_config):
     return sorted(rs, key=lambda r: r.get("rank", 0)) if rs else rs
 
 
+def ler_anomalia():
+    """Dados por rank da corrida com a anomalia (resultados/anomalia/):
+    a hibrida medida antes da correcao do --hint, arquivada para a
+    comparacao antes x depois."""
+    procs = defaultdict(dict)
+    for caminho in sorted(glob.glob(os.path.join(RES, "anomalia",
+                                                 "processos-*.csv"))):
+        with open(caminho) as f:
+            for r in csv.DictReader(f):
+                chave = (r["experimento"], r["versao"], int(r["processos"]),
+                         int(r["threads"]), int(r["rank"]))
+                procs[chave] = dict(rank=int(r["rank"]),
+                                    calc=float(r["calc_s"]))
+    return procs
+
+
+def calc_medio(procs, exp, t):
+    rs = ranks_de(procs, (exp, "mpi_omp", 4, t))
+    return statistics.mean(r["calc"] for r in rs) if rs else None
+
+
+def fig_anomalia(antes, procs):
+    """Antes x depois do calc por rank da hibrida: sem o --hint o slurm
+    confinava o 4x8 ao socket 0 (4 dos 8 cores fisicos do no) e o calc
+    ficava igual ao do 4x4."""
+    configs = [
+        ("forte 4×4", "hibrida", 4),
+        ("forte 4×8", "hibrida", 8),
+        ("forte 4×16", "hibrida", 16),
+        ("fraca 4×8 (32 un)", "fraca", 8),
+    ]
+    series = [("antes (sem --hint)", "#c9c8c3", antes),
+              ("depois (com --hint)", "#eb6834", procs)]
+    fig, ax = plt.subplots(figsize=(7.4, 2.4))
+    larg = 0.38
+    for i, (rot, cor, fonte) in enumerate(series):
+        desloc = (i - 1) * larg / 2
+        vals = [(g, calc_medio(fonte, exp, t)) for g, (rot, exp, t)
+                in enumerate(configs)]
+        vals = [(g + desloc, v) for g, v in vals if v is not None]
+        ax.bar([g for g, _ in vals], [v for _, v in vals],
+               width=larg * 0.92, color=cor, label=rot, zorder=3)
+    ax.set_xticks(range(len(configs)), [c[0] for c in configs])
+    ax.set_ylabel("calc por rank (s)")
+    ax.yaxis.grid(True, color=GRADE, lw=0.6, zorder=0)
+    ax.legend(loc="upper left", fontsize=7)
+    fig.suptitle("Cálculo por rank da híbrida antes e depois da correção "
+                 "de binding — Jogo da Vida de Conway", fontsize=9,
+                 color=TEXTO, x=0.01, ha="left")
+    fig.tight_layout()
+    return fig
+
+
 def fig_fases(procs):
     """Tempo das fases empilhado por rank (1a repeticao de cada config):
     mostra o peso da comunicacao quando a fatia encolhe e se o trabalho
@@ -445,6 +498,9 @@ def main():
                "fig_fraca")
         salvar(fig_eficiencia(m), "fig_eficiencia")
         salvar(fig_fases(procs), "fig_fases")
+        antes = ler_anomalia()
+        if antes:
+            salvar(fig_anomalia(antes, procs), "fig_anomalia")
         gerar_tabelas(m, procs)
         resumo(m, procs)
 
