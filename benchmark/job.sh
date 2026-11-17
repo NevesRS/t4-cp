@@ -12,4 +12,3 @@ export PATH=/LADAPPs/OpenMPI/openmpi-4.1.1/bin:$PATH
 cd "$SLURM_SUBMIT_DIR"
 echo "nos: $SLURM_JOB_NODELIST"
 python3 -u benchmark.py "$@"
-gi
