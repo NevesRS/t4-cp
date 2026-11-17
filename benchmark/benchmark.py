@@ -79,10 +79,15 @@ def medir(experimento, versao, cmd, processos, threads, reps):
     for rep in range(reps):
         tempo, ok, procs = executar(cmd)
         tempos.append(tempo)
+        # A geometria real vem do cmd (na fraca sobrepoe as constantes).
+        flags = dict(zip(cmd, cmd[1:]))
         anexar(BRUTOS, CAMPOS_BRUTOS, [dict(
             experimento=experimento, versao=versao, processos=processos,
-            threads=threads, nos=NOS, altura=ALTURA, largura=LARGURA,
-            geracoes=GERACOES, repeticao=rep, tempo_s=f"{tempo:.6f}", ok=ok)])
+            threads=threads, nos=NOS,
+            altura=int(flags.get("--altura", ALTURA)),
+            largura=int(flags.get("--largura", LARGURA)),
+            geracoes=int(flags.get("--geracoes", GERACOES)),
+            repeticao=rep, tempo_s=f"{tempo:.6f}", ok=ok)])
         if rep == 0 and procs:
             anexar(PROCESSOS, CAMPOS_PROC, [dict(
                 experimento=experimento, versao=versao, processos=processos,
@@ -154,7 +159,7 @@ def main():
                        "--cpus-per-task", str(t),
                        "./conway_fases_hibrido", "--threads", str(t),
                        "--estatisticas", *cmd_fraca(u)],
-                      u, t, a.reps)
+                      4, t, a.reps)  # 4 processos de t threads (u = 4t unidades)
         elif exp == "init":
             # Custo de gerar_fatia (O(tabuleiro), com ~0 geracoes roda so
             # o init): constante em np? O valor vem do campo init_s da
