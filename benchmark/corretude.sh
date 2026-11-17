@@ -59,7 +59,7 @@ for th in 1 2 4 8 16; do
 done
 
 # Tamanho real do trabalho (so tempo e checksum, sem comparacao)
-echo "1500x1500 x75 mpi np=32:      $(srun -N 4 -n 32 ./conway_fases_mpi --no-print)"
-echo "1500x1500 x75 hibrido 4x8thr: $(srun -N 4 -n 4 --cpus-per-task=8 ./conway_fases_hibrido --threads 8 --no-print)"
+echo "4000x4000 x75 mpi np=32:      $(srun -N 4 -n 32 ./conway_fases_mpi --no-print)"
+echo "4000x4000 x75 hibrido 4x8thr: $(srun -N 4 -n 4 --cpus-per-task=8 ./conway_fases_hibrido --threads 8 --no-print)"
 echo "falhas: $falhas"
 exit $falhas

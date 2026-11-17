@@ -18,8 +18,8 @@ benchmark.py no LAD) e produz
 Definicoes (unidade = 1 processo MPI na versao pura, 1 thread OpenMP na
 hibrida; 4 processos x t threads = 4t unidades):
 
-  forte   tabuleiro fixo 1500x1500; S = T_seq(1500^2) / T_p, E = 100 S / p.
-  fraca   fatia constante de 47 x 1500 celulas por unidade (o tabuleiro
+  forte   tabuleiro fixo 4000x4000; S = T_seq(4000^2) / T_p, E = 100 S / p.
+  fraca   fatia constante de 125 x 4000 celulas por unidade (o tabuleiro
           cresce com p); S = T_seq(tabuleiro grande) / T_p, E = 100 S / p.
           O sequencial do tabuleiro grande e medido (experimento fraca_seq),
           nao extrapolado; como a referencia e o sequencial do MESMO trabalho
@@ -63,7 +63,7 @@ plt.rcParams.update({
     "legend.frameon": False, "figure.dpi": 200,
 })
 
-FATIA = 47  # linhas por unidade na fraca (igual ao benchmark.py)
+FATIA = 125  # linhas por unidade na fraca (igual ao benchmark.py)
 UNIDADES = [4, 8, 16, 32, 64]  # 64 so existe na forte (HT)
 SEM_HT = [u for u in UNIDADES if u != 64]
 
@@ -72,7 +72,7 @@ SERIES_FRACA = [("fraca_mpi", COR_MPI, ROTULO_MPI),
                 ("fraca_hib", COR_HIB, ROTULO_HIB)]
 
 TITULO_BASE = (" — Jogo da Vida de Conway, 4 nós da atlântica "
-               "(1500×1500×75 forte; 47×1500 por unidade fraca)")
+               "(4000×4000×75 forte; 125×4000 por unidade fraca)")
 
 
 def ler(padrao):
@@ -99,13 +99,15 @@ def dados_reais():
         t = tempos.get((exp, versao, p, threads, altura))
         return statistics.mean(t) if t else None
 
-    d = {"seq": medida("seq", "seq", 1, 1, 1500)}
+    d = {"seq": medida("seq", "seq", 1, 1, 4000)}
     for p in UNIDADES:
-        d["forte_mpi", p] = medida("forte", "mpi", p, 1, 1500)
+        d["forte_mpi", p] = medida("forte", "mpi", p, 1, 4000)
+    for p in SEM_HT:
+        # 64 nunca e medido na fraca (sem HT).
         d["fraca_seq", p] = medida("fraca_seq", "seq", p, 1, p * FATIA)
         d["fraca_mpi", p] = medida("fraca", "mpi", p, 1, p * FATIA)
     for t in (4, 8, 16):
-        d["hib", 4 * t] = medida("hibrida", "mpi_omp", 4, t, 1500)
+        d["hib", 4 * t] = medida("hibrida", "mpi_omp", 4, t, 4000)
     for t in (4, 8):
         d["fraca_hib", 4 * t] = medida("fraca", "mpi_omp", 4, t,
                                        4 * t * FATIA)
@@ -120,16 +122,15 @@ def dados_mock():
     fisicos) e eficiencia da fraca melhor que a da forte nos primeiros
     pontos (na forte o tabuleiro per-process encolhe e a comunicacao pesa).
     """
-    d = {"seq": 8.19}
-    for p, t in ((4, 2.28), (8, 1.17), (16, 0.61), (32, 0.33), (64, 0.27)):
+    d = {"seq": 58.2}  # 8.19 s em 1500^2 escalado por 4000^2 / 1500^2
+    for p, t in ((4, 12.2), (8, 6.2), (16, 3.25), (32, 1.80), (64, 1.75)):
         d["forte_mpi", p] = t
-    for u, t in ((16, 0.62), (32, 0.334), (64, 0.285)):
+    for u, t in ((16, 3.40), (32, 1.90), (64, 1.85)):
         d["hib", u] = t
-    for p in UNIDADES:
-        d["fraca_seq", p] = p * 0.2566  # 8.19 s * 47 * 1500 / 2250000
-        d["fraca_mpi", p] = {4: 0.279, 8: 0.283, 16: 0.288, 32: 0.318,
-                             64: None}[p]
-    for u, t in ((16, 0.297), (32, 0.327)):
+    for p in SEM_HT:
+        d["fraca_seq", p] = p * 58.2 / 32  # mesmo tamanho por unidade
+        d["fraca_mpi", p] = {4: 1.95, 8: 1.98, 16: 2.02, 32: 2.10}[p]
+    for u, t in ((16, 2.10), (32, 2.20)):
         d["fraca_hib", u] = t
     return d
 

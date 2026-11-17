@@ -14,7 +14,7 @@ Experimentos:
   hibrida  MPI + OpenMP: 4 processos (1 por no), com 4, 8 e 16 threads
            por no (16 = HT) -- comparacao direta com MPI puro de mesmo
            numero total de nucleos (16/32/64)
-  fraca    escalabilidade fraca: fatia constante de FATIA linhas x 1500 por
+  fraca    escalabilidade fraca: fatia constante de FATIA linhas x 4000 por
            unidade (processo ou thread), tabuleiro cresce com o numero de
            unidades. Sequencial medido no tabuleiro grande de cada ponto
            (referencia). Sem HT: nem 64 processos, nem 16 threads.
@@ -27,8 +27,8 @@ import subprocess
 import sys
 import time
 
-ALTURA = 1500
-LARGURA = 1500
+ALTURA = 4000
+LARGURA = 4000
 GERACOES = 75
 TIMEOUT = 2 * 3600
 
@@ -94,7 +94,7 @@ GEOM = ["--altura", str(ALTURA), "--largura", str(LARGURA), "--geracoes",
 
 # Escalabilidade fraca: cada unidade (processo ou thread) fica sempre com
 # FATIA x LARGURA celulas; o tabuleiro cresce com o numero de unidades.
-FATIA = 47  # 1500 / 32 arredondado: com 32 unidades o tabuleiro e 1504x1500
+FATIA = 125  # 4000 / 32: com 32 unidades o tabuleiro e 4000x4000
 
 
 def cmd_fraca(unidades):

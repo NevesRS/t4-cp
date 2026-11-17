@@ -36,7 +36,7 @@ versão híbrida MPI/OpenMP (np 4, 8 e 16 threads dentro do nó)**.
 
 ## Decisões do grupo
 
-- **Programa:** Jogo da Vida de Conway (problema do T1/T2), 1500x1500, 75
+- **Programa:** Jogo da Vida de Conway (problema do T1/T2), 4000x4000, 75
   gerações, densidade inicial 20% (`srand(42)`).
 - **Condição de término:** máximo de gerações (como no T1/T2); a verificação
   distribuída (fase 2) conta as células que mudaram (`MPI_Allreduce`) e encerra

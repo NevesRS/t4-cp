@@ -81,7 +81,7 @@ HT; na híbrida, 4 processos --- um por nó --- com 4, 8 e 16 threads).
 \label{sec:modelo}
 
 O tabuleiro é um toro de \emph{altura} $\times$ \emph{largura} células, usado
-também no T1/T2 (1500$\times$1500, 75 gerações, densidade inicial 20\%,
+também no T1/T2 (4000$\times$4000, 75 gerações, densidade inicial 20\%,
 \texttt{srand(42)}). A partição é por \textbf{blocos de linhas}: o processo
 $r$ fica com as linhas $[r\cdot h/np,\,(r{+}1)\cdot h/np)$; cada processo
 \textbf{gera internamente} a sua fatia percorrendo a mesma sequência de
